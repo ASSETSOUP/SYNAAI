@@ -1,0 +1,230 @@
+<section class="betiq-widget">
+    <div class="container">
+        <div class="widget funky-background">
+            <h2>SYNTHIA - Futuristic AI Sports Oracle ($SYNA)</h2>
+            
+            <label for="region-selector">Select Your Region:</label>
+            <select id="region-selector" class="region-selector">
+                <option value="">-- Select Region --</option>
+                <option value="EU">EU</option>
+                <option value="UK">UK</option>
+                <option value="USA">USA</option>
+                <option value="CentralSouthAmerica">Central &amp; South America</option>
+            </select>
+            
+            <label for="city-selector">Select Your City:</label>
+            <select id="city-selector" class="city-selector" enable="">
+                <option value="">-- Select City --</option>
+            </select>
+            
+            <label for="league-selector">Select Your League:</label>
+            <select id="league-selector" class="league-selector">
+                <option value="basketball_ncaab">NCAAB</option>
+                <option value="soccer_premier_league">Premier League (UK)</option>
+                <option value="soccer_ligue_1">Ligue 1 (France)</option>
+                <option value="soccer_bundesliga">Bundesliga (Germany)</option>
+                <option value="soccer_serie_a">Serie A (Italy)</option>
+                <option value="soccer_la_liga">La Liga (Spain)</option>
+                <option value="soccer_eredivisie">Eredivisie (Netherlands)</option>
+                <option value="soccer_primeira_liga">Primeira Liga (Portugal)</option>
+                <option value="soccer_brazil_serie_a">Brazil Serie A</option>
+                <option value="soccer_argentina_primera">Argentina Primera Division</option>
+                <option value="soccer_mexico_liga_mx">Liga MX (Mexico)</option>
+                <option value="soccer_chile_primera">Chile Primera Division</option>
+                <option value="soccer_colombia_primera">Colombia Primera A</option>
+                <option value="soccer_uruguay_primera">Uruguay Primera Division</option>
+                <option value="soccer_mls">MLS</option>
+                <option value="americanfootball_nfl">NFL</option>
+                <option value="basketball_nba">NBA</option>
+                <option value="americanfootball_ncaaf">NCAAF</option>
+                <option value="icehockey_nhl">NHL</option>
+                <option value="baseball_mlb">MLB</option>
+                <option value="basketball_wnba">WNBA</option>
+            
+                <option value="soccer_premier_league">Premier League (UK)</option>
+                <option value="soccer_ligue_1">Ligue 1 (France)</option>
+                <option value="soccer_bundesliga">Bundesliga (Germany)</option>
+                <option value="soccer_serie_a">Serie A (Italy)</option>
+                <option value="soccer_la_liga">La Liga (Spain)</option>
+                <option value="soccer_mls">MLS</option>
+                <option value="americanfootball_nfl">NFL</option>
+                <option value="basketball_nba">NBA</option>
+                <option value="americanfootball_ncaaf">NCAAF</option>
+                <option value="icehockey_nhl">NHL</option>
+                <option value="baseball_mlb">MLB</option>
+                <option value="basketball_wnba">WNBA</option>
+            </select>
+            
+            <div id="predictions" class="predictions" style="max-height: 300px; overflow-y: auto;"></div>
+            <h3>My Selected Bets</h3>
+            <div id="selected-bets" class="selected-bets"></div>
+            <button id="refresh" class="refresh-button">Get More Predictions</button>
+            <button id="reset" class="refresh-button">Reset View</button>
+        </div>
+    </div>
+    <div class="ticker">
+        <marquee id="sports-ticker" behavior="scroll" direction="left">Loading live sports updates...</marquee>
+    </div>
+    
+    <style>
+        .refresh-button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #ffcc00;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+        .betiq-widget {
+            background: linear-gradient(to right, #6a0dad, #4b0082);
+            color: white;
+        }
+        .widget {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .ticker {
+            background: black;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+        }
+        .bet-button, .select-game-button {
+        background: orange;
+        color: white;
+        font-weight: bold;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+    }
+</style>
+    
+    <script>
+        function getBettingSite() {
+            const region = document.getElementById("region-selector").value;
+            const bettingSites = {
+                "EU": "https://sportsbetting.ag/",
+                "UK": "https://sports.betmgm.com/en/sports",
+                "USA": "https://sportsbook.draftkings.com/",
+                "CentralSouthAmerica": "https://www.betus.com.pa/sportsbook/"
+            };
+            return bettingSites[region] || "https://sportsbook.draftkings.com/";
+        }
+        async function fetchLiveOdds(league) {
+            try {
+                const response = await fetch(`https://api.the-odds-api.com/v4/sports/${league}/odds/?apiKey=5b601e797ce1d45f442ecaff2c6e3df9&regions=us`);
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+                const data = await response.json();
+                return data.map(match => {
+                    let favorite = '';
+                    if (match.bookmakers?.length > 0 && match.bookmakers[0].markets?.length > 0) {
+                        const outcomes = match.bookmakers[0].markets[0].outcomes;
+                        favorite = outcomes.reduce((fav, curr) => fav.price < curr.price ? fav : curr).name;
+                        return {
+                            game: `${match.home_team} vs ${match.away_team}`,
+                            prediction: `Odds - ${outcomes[0].price}`,
+                            favorite: favorite
+                        };
+                    }
+                    return null;
+                }).filter(Boolean);
+            } catch (error) {
+                console.error("Error fetching live odds:", error);
+                return [];
+            }
+        }
+        
+        document.getElementById("region-selector").addEventListener("change", function() {
+            const region = this.value;
+            const citySelector = document.getElementById("city-selector");
+            citySelector.innerHTML = '<option value="">-- Select City --</option>';
+            // citySelector.disabled = false;
+            
+            const citiesByRegion = {
+                "EU": ["London", "Berlin", "Paris", "Madrid"],
+                "UK": ["London", "Manchester", "Liverpool"],
+                "USA": ["New York", "Los Angeles", "Chicago", "Miami", "Las Vegas"],
+                "CentralSouthAmerica": ["Mexico City", "São Paulo", "Buenos Aires", "Lima"]
+            };
+            
+            if (citiesByRegion[region]) {
+                citiesByRegion[region].forEach(city => {
+                    const option = document.createElement("option");
+                    option.value = city;
+                    option.textContent = city;
+                    citySelector.appendChild(option);
+                });
+                citySelector.removeAttribute('disabled');
+            }
+        });
+        
+        document.getElementById("league-selector").addEventListener("change", async function() {
+            
+            document.getElementById("predictions").innerHTML = "Fetching latest predictions...";
+            predictions = await fetchLiveOdds(this.value);
+            if (predictions.length === 0) {
+                document.getElementById("predictions").innerHTML = '<p>No odds available for this league.</p>';
+                return;
+            }
+           
+            document.getElementById("predictions").innerHTML = predictions.map(p => `
+                <div class="card">
+                    <p><strong>Game:</strong> ${p.game}</p>
+                    <p><strong>Prediction:</strong> ${p.prediction}</p>
+                    <p><strong>Favorite:</strong> ${p.favorite}</p>
+                    <button class="select-game-button" onclick="storeBet('${p.game}', '${p.prediction}')">Select Game</button>
+                    <button class="bet-button" onclick="storeBet('${p.game}', '${p.prediction}'); window.open(getBettingSite(), '_blank');">Bet Live</button>
+                </div>
+            `).join('');
+        });
+        
+        function storeBet(game, prediction) {
+            let selectedBets = JSON.parse(localStorage.getItem("selectedBets") || "[]");
+            selectedBets.push({ game, prediction });
+            localStorage.setItem("selectedBets", JSON.stringify(selectedBets));
+            updateSelectedBets();
+        updateSportsTicker();
+        updateSportsTicker();
+        }
+        
+        function updateSportsTicker() {
+            const ticker = document.getElementById("sports-ticker");
+            const selectedBets = JSON.parse(localStorage.getItem("selectedBets") || "[]");
+            ticker.textContent = selectedBets.length > 0 ? selectedBets.map(bet => `${bet.game}: ${bet.prediction}`).join(' | ') : "No bets selected yet.";
+        }
+        
+        function updateSelectedBets() {
+            const selectedBetsDiv = document.getElementById("selected-bets");
+            const selectedBets = JSON.parse(localStorage.getItem("selectedBets") || "[]");
+            selectedBetsDiv.innerHTML = selectedBets.map(bet => `
+                <div class="card">
+                    <p><strong>Game:</strong> ${bet.game}</p>
+                    <p><strong>Prediction:</strong> ${bet.prediction}</p>
+                </div>
+            `).join('');
+        }
+        
+        document.getElementById("reset").addEventListener("click", function() {
+            localStorage.clear();
+            document.getElementById("selected-bets").innerHTML = "";
+            updateSportsTicker();
+            localStorage.clear();
+            document.getElementById("selected-bets").innerHTML = "";
+        });
+        
+        updateSelectedBets();
+    </script>
+</section>
