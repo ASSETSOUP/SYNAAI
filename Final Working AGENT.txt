@@ -1,0 +1,213 @@
+
+
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet Synthia - Your Sports Prediction Agent</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000000;
+            color: #00ff00;
+            text-align: center;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 2px solid #00ff00;
+            display: none;
+        }
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #00ff00;
+            background: black;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+        input[type="date"] {
+            appearance: none;
+            text-align: center;
+        }
+        button {
+            cursor: pointer;
+        }
+        button:hover {
+            background: #00ff00;
+            color: black;
+        }
+        .matches-container, .selected-games {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin-top: 10px;
+            text-align: left;
+        }
+        .loading-container {
+            text-align: center;
+            font-size: 20px;
+            color: #00ff00;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+
+
+    <div class="loading-container" id="loadingScreen">
+        <p id="loadingText"></p>
+    </div>
+    <div class="container" id="mainContent" style="display:none;">
+        <h2>🧠 Meet Synthia - Your Sports Prediction Agent</h2>
+        <label for="league">Select League:</label>
+        <select id="league">
+            <option value="">Select a League</option>
+        </select>
+        <label for="region">Select Region:</label>
+        <select id="region">
+            <option value="us">USA</option>
+            <option value="eu">Europe</option>
+            <option value="uk">UK</option>
+            <option value="au">Australia</option>
+            <option value="ca">Central America</option>
+        </select>
+        <label for="date">Select Date:</label>
+        <div class="date-container">
+            <input type="date" id="date" title="Click here to select a date" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #00ff00; background: black; color: #00ff00; font-family: 'Courier New', monospace;">
+        </div>
+        <button onclick="fetchMatchData()">🔍 Load Live Games &amp; Odds</button>
+        <button onclick="resetView()">🔄 Reset</button>
+        <div class="matches-container" id="matchesContainer">
+            <p>Live games will appear here...</p>
+        </div>
+        <button id="betButton" onclick="placeBet()">🔥 Bet Live</button>
+        <button onclick="addSelectedGames()">➕ Select Games for Fun Betting</button>
+        <div class="selected-games" id="selectedGames">
+            <p>Selected games will appear here...</p>
+        </div>
+    </div>
+    <script>
+        const loadingMessages = [
+            "Meet Synthia - Your Sports Prediction Agent",
+            "Gathering latest sports data...",
+            "Analyzing trends and statistics...",
+            "Finalizing insights...",
+            "Launching prediction agent..."
+        ];
+        
+        let index = 0;
+        function displayLoadingMessages() {
+            if (index < loadingMessages.length) {
+                document.getElementById("loadingText").innerHTML += loadingMessages[index] + "<br>";
+                index++;
+                setTimeout(displayLoadingMessages, 1000);
+            } else {
+                setTimeout(() => {
+                    document.getElementById("loadingScreen").style.display = "none";
+                    document.getElementById("mainContent").style.display = "block";
+                    fetchLeagues();
+                }, 1000);
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            displayLoadingMessages();
+        });
+        
+        function fetchLeagues() {
+            const apiKey = "5b601e797ce1d45f442ecaff2c6e3df9";
+            fetch(`https://api.the-odds-api.com/v4/sports?apiKey=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    const leagueSelect = document.getElementById("league");
+                    leagueSelect.innerHTML = "<option value=''>Select a League</option>";
+                    data.forEach(league => {
+                        let option = document.createElement("option");
+                        option.value = league.key;
+                        option.textContent = league.title;
+                        leagueSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error("Failed to fetch leagues:", error);
+                    alert("Failed to load leagues. Please try again later.");
+                });
+        }
+        
+        function fetchMatchData() {
+    const league = document.getElementById("league").value;
+    const date = document.getElementById("date").value;
+    const region = document.getElementById("region").value;
+
+    if (!league || !date) {
+        alert("Please select a league and a date.");
+        return;
+    }
+
+    const apiKey = "5b601e797ce1d45f442ecaff2c6e3df9";
+    fetch(`https://api.the-odds-api.com/v4/sports/${league}/odds/?regions=${region}&markets=h2h&date=${date}&apiKey=${apiKey}`)
+        .then(response => response.json())
+        .then(data => {
+            const matchesContainer = document.getElementById("matchesContainer");
+            matchesContainer.innerHTML = "";
+
+            if (!Array.isArray(data) || data.length === 0) {
+                matchesContainer.innerHTML = "<p>No games available for selected date.</p>";
+                return;
+            }
+
+            data.forEach(game => {
+                if (game.bookmakers.length > 0) {
+                    let odds = game.bookmakers[0].markets[0].outcomes.map(outcome => `${outcome.name}: ${outcome.price}`).join(" | ");
+                    let prediction = game.bookmakers[0].markets[0].outcomes[0].name;
+                    matchesContainer.innerHTML += `
+                    <div>
+                        <input type='checkbox' class='game-checkbox' value='${game.home_team} vs ${game.away_team}'>
+                        ${game.home_team} vs ${game.away_team} | Odds: ${odds} | Prediction: ${prediction}<br>
+                        <a href='https://www.draftkings.com/sportsbook' target='_blank'>
+                            <button>Bet Now</button>
+                        </a>
+                    </div>`;
+                }
+            });
+        })
+        .catch(error => {
+            console.error("API fetch failed: ", error);
+            document.getElementById("matchesContainer").innerHTML = "<p>Failed to load games. Please try again.</p>";
+        });
+}
+function addSelectedGames() {
+    const selectedGamesContainer = document.getElementById("selectedGames");
+    selectedGamesContainer.innerHTML = "";
+    const checkboxes = document.querySelectorAll(".game-checkbox:checked");
+    if (checkboxes.length === 0) {
+        selectedGamesContainer.innerHTML = "<p>No games selected.</p>";
+        return;
+    }
+    checkboxes.forEach(box => {
+        selectedGamesContainer.innerHTML += `<p>${box.value}</p>`;
+    });
+}
+
+       
+       function placeBet() {
+            window.open('https://www.draftkings.com/sportsbook', '_blank');
+        }
+
+        function resetView() {
+            document.getElementById("league").value = "";
+            document.getElementById("region").value = "us";
+            document.getElementById("date").value = "";
+            document.getElementById("matchesContainer").innerHTML = "<p>Live games will appear here...</p>";
+            document.getElementById("selectedGames").innerHTML = "<p>Selected games will appear here...</p>";
+        }
+    </script>
+
+
